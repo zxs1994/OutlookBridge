@@ -6,7 +6,7 @@
   "description": "A protocol bridge to launch Outlook with attachments",
   "author": "xusheng",
   "scripts": {
-    "dev": "electron .",
+    "dev": "node start.js",
     "build:win": "electron-builder --win --config",
     "build:mac": "electron-builder --mac --config",
     "build:linux": "electron-builder --linux --config"
@@ -23,6 +23,19 @@
     },
     "mac": {
       "target": "dmg"
+    },
+    "protocols": [
+      {
+        "name": "Outlook Bridge Protocol",
+        "schemes": ["outlookbridge"]
+      }
+    ],
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
     }
   },
   "dependencies": {}

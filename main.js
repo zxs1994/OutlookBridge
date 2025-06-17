@@ -7,23 +7,45 @@ const path = require('path');
 const isMac = process.platform === 'darwin';
 const isWin = process.platform === 'win32';
 
-// 注册自定义协议（开发环境可能无效，需打包后使用）
+// 注册自定义协议
 if (!app.isDefaultProtocolClient('outlookbridge')) {
-  app.setAsDefaultProtocolClient('outlookbridge');
+  app.setAsDefaultProtocolClient(
+    'outlookbridge',
+    process.execPath,
+    isWin ? [path.resolve(process.argv[1])] : undefined
+  );
 }
 
 // Mac 上必须在 ready 前监听 open-url
-app.on('open-url', (event, urlStr) => {
-  event.preventDefault();
-  handleProtocol(urlStr);
-});
+if (isMac) {
+  app.on('open-url', (event, urlStr) => {
+    event.preventDefault();
+    handleProtocol(urlStr);
+  });
+}
+
+// Windows 多次唤起时使用 second-instance 接收协议参数
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine) => {
+    const protocolArg = commandLine.find(arg => arg.startsWith('outlookbridge://'));
+    if (protocolArg) handleProtocol(protocolArg);
+  });
+}
 
 app.whenReady().then(() => {
-  // macOS 正常流程：通过 open-url 接收
-  // Windows 在首次启动时可能通过 process.argv 收到 URL
+  // Windows 首次启动时可能通过 process.argv 带入协议参数
   if (isWin && process.argv.length >= 2) {
     const protocolArg = process.argv.find(arg => arg.startsWith('outlookbridge://'));
-    if (protocolArg) handleProtocol(protocolArg);
+    if (protocolArg) return handleProtocol(protocolArg);
+  }
+
+  // ✅ 开发环境下通过环境变量传入
+  const devProtocolArg = process.env.OUTLOOKBRIDGE_URL
+  if (devProtocolArg && devProtocolArg.startsWith('outlookbridge://')) {
+    handleProtocol(devProtocolArg)
   }
 });
 
@@ -33,7 +55,8 @@ app.whenReady().then(() => {
  */
 function handleProtocol(urlStr) {
   try {
-    const url = new URL(urlStr);
+    const rawUrl = decodeURIComponent(urlStr); // 防止编码参数乱码
+    const url = new URL(rawUrl);
     const params = Object.fromEntries(url.searchParams.entries());
 
     if (!params.email) {
@@ -51,7 +74,9 @@ function handleProtocol(urlStr) {
       to: params.email,
       subject: params.subject || '无主题',
       body: params.body || '',
-      attachments: params.attachments ? params.attachments.split(',') : []
+      attachments: params.attachments?.trim()
+        ? params.attachments.split(',').map(s => s.trim())
+        : []
     });
 
   } catch (err) {
@@ -80,16 +105,18 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
  * macOS 下使用 AppleScript 调用 Outlook 创建邮件
  */
 function createOutlookMailMac({ to, subject, body, attachments }) {
+  const escapeAppleScriptString = str => str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const asScript = `
-  tell application "Microsoft Outlook"
-    set newMessage to make new outgoing message with properties {subject:"${subject}", content:"${body}"}
-    make new recipient at newMessage with properties {email address:{name:"", address:"${to}"}}
-    ${attachments.map(filePath => `make new attachment at newMessage with properties {file:(POSIX file "${filePath}")}` ).join('\n')}
-    open newMessage
-    activate
-  end tell
-`;
-  console.log('生成的 AppleScript:', asScript);
+    tell application "Microsoft Outlook"
+      set newMessage to make new outgoing message with properties {subject:"${escapeAppleScriptString(subject)}", content:"${escapeAppleScriptString(body)}"}
+      make new recipient at newMessage with properties {email address:{name:"", address:"${escapeAppleScriptString(to)}"}}
+      ${attachments.map(filePath =>
+        `make new attachment at newMessage with properties {file:(POSIX file "${escapeAppleScriptString(filePath)}")}`
+      ).join('\n')}
+      open newMessage
+      activate
+    end tell
+  `;
   const tmpFile = path.join(os.tmpdir(), 'outlook_temp.scpt');
   fs.writeFileSync(tmpFile, asScript);
   execSync(`osascript "${tmpFile}"`, { stdio: 'ignore' });
