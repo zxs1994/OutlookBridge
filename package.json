@@ -1,0 +1,29 @@
+{
+  "name": "outlookbridge",
+  "version": "1.0.0",
+  "main": "main.js",
+  "license": "MIT",
+  "description": "A protocol bridge to launch Outlook with attachments",
+  "author": "xusheng",
+  "scripts": {
+    "dev": "electron .",
+    "build:win": "electron-builder --win --config",
+    "build:mac": "electron-builder --mac --config",
+    "build:linux": "electron-builder --linux --config"
+  },
+  "devDependencies": {
+    "electron": "25",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.xusheng.outlookbridge",
+    "productName": "OutlookBridge",
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  },
+  "dependencies": {}
+}

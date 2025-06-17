@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>OutlookBridge 协议测试</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>测试 outlookbridge 协议调用</h1>
+
+  <label for="email">收件人邮箱：</label>
+  <input type="email" id="email" value="test@example.com">
+
+  <label for="subject">主题：</label>
+  <input type="text" id="subject" value="测试主题">
+
+  <label for="body">邮件正文：</label>
+  <textarea id="body" rows="5">你好，这是一封测试邮件。</textarea>
+
+  <label for="attachments">附件路径（多个用英文逗号分隔）：</label>
+  <input type="text" id="attachments" value="">
+
+  <button onclick="sendEmail()">点击唤起邮件</button>
+
+  <script>
+    function sendEmail() {
+      const email = encodeURIComponent(document.getElementById('email').value.trim())
+      const subject = encodeURIComponent(document.getElementById('subject').value.trim())
+      const body = encodeURIComponent(document.getElementById('body').value.trim())
+      const attachments = encodeURIComponent(document.getElementById('attachments').value.trim())
+
+      if (!email) {
+        alert('请输入收件人邮箱')
+        return
+      }
+
+      const url = `outlookbridge://?email=${email}&subject=${subject}&body=${body}&attachments=${attachments}`
+      console.log('Opening URL:', decodeURIComponent(url))
+      window.open(url)
+    }
+  </script>
+</body>
+</html>
