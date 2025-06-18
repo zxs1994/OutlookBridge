@@ -14,10 +14,11 @@ console.log('启动参数:', process.argv)
 // ✅ 注册协议（仅生产）
 if (!isDev) {
   if (!app.isDefaultProtocolClient('outlookbridge')) {
+    const protocolArgs = isWin && process.argv[1] ? [path.resolve(process.argv[1])] : undefined
     app.setAsDefaultProtocolClient(
       'outlookbridge',
       process.execPath,
-      isWin ? [path.resolve(process.argv[1])] : undefined
+      protocolArgs
     )
   }
 } else {
