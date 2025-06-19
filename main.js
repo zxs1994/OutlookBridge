@@ -47,20 +47,18 @@ if (!gotLock) {
 
 // ✅ App 准备好后处理首次启动的参数
 app.whenReady().then(() => {
-  if (isWin && process.argv.length >= 2) {
-    const protocolArg = process.argv.find(arg => arg.startsWith('outlookbridge://'))
-    if (protocolArg) return handleProtocol(protocolArg)
+  const protocolArg = process.argv.find(arg => arg.startsWith('outlookbridge://'))
+
+  // ✅ 如果通过协议启动，等待 second-instance 处理，不在主进程重复调用
+  if (protocolArg && !isDev) {
+    console.log('[首次启动] 收到协议参数，等待 second-instance 处理')
+    return
   }
 
-  // ✅ 开发模式通过环境变量测试
-  const devProtocolArg = process.env.OUTLOOKBRIDGE_URL
-  if (isDev && devProtocolArg?.startsWith('outlookbridge://')) {
-    console.log('[开发模拟] 处理协议:', devProtocolArg)
-    handleProtocol(devProtocolArg)
+  if (isDev && process.env.OUTLOOKBRIDGE_URL?.startsWith('outlookbridge://')) {
+    console.log('[开发模拟] 处理协议:', process.env.OUTLOOKBRIDGE_URL)
+    handleProtocol(process.env.OUTLOOKBRIDGE_URL)
   }
-
-  // TODO: 创建主窗口
-  // createMainWindow()
 })
 
 /**
@@ -108,15 +106,21 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
       $mail = $outlook.CreateItem(0)
       $mail.To = ${JSON.stringify(to)}
       $mail.Subject = ${JSON.stringify(subject)}
-      $mail.Body = ${JSON.stringify(body)}
       $mail.HTMLBody = ${JSON.stringify(body)}
       ${attachments.map(p => `$mail.Attachments.Add(${JSON.stringify(p)})`).join('\n')}
       $mail.Display()
-    `
-    execSync(`powershell -Command "${psScript}"`, { stdio: 'inherit' })
+      $outlook.ActiveWindow()
+    `.trim()
+
+    const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
+
+    execSync(`powershell -NoProfile -EncodedCommand ${encoded}`, {
+      stdio: 'inherit',
+    })
+
     console.log('✅ 成功调用 Windows Outlook')
   } catch (err) {
-    console.error('❌ Windows 调用 Outlook 失败:', err)
+    console.error('❌ 调用 Outlook 出错:', err)
   }
 }
 
