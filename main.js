@@ -109,7 +109,9 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
       $mail.HTMLBody = ${JSON.stringify(body)}
       ${attachments.map(p => `$mail.Attachments.Add(${JSON.stringify(p)})`).join('\n')}
       $mail.Display()
-      $outlook.ActiveWindow()
+      Start-Sleep -Milliseconds 300
+      $shell = New-Object -ComObject WScript.Shell
+      $shell.AppActivate("Outlook")
     `.trim()
 
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
@@ -119,7 +121,7 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
       windowsHide: true,
     })
 
-    console.log('✅ 成功调用 Windows Outlook')
+    console.log('✅ 成功调用 Windows Outlook 并激活窗口')
   } catch (err) {
     console.error('❌ 调用 Outlook 出错:', err)
   }
