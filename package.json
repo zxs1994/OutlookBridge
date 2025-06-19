@@ -1,6 +1,6 @@
 {
   "name": "outlookbridge",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "main.js",
   "license": "MIT",
   "description": "A protocol bridge to launch Outlook with attachments",

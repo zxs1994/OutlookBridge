@@ -114,8 +114,9 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
 
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
 
-    execSync(`powershell -NoProfile -EncodedCommand ${encoded}`, {
-      stdio: 'inherit',
+    execSync(`powershell -WindowStyle Hidden -NoProfile -EncodedCommand ${encoded}`, {
+      stdio: 'ignore',
+      windowsHide: true,
     })
 
     console.log('✅ 成功调用 Windows Outlook')
