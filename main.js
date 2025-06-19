@@ -109,9 +109,16 @@ function createOutlookMailWindows({ to, subject, body, attachments }) {
       $mail.HTMLBody = ${JSON.stringify(body)}
       ${attachments.map(p => `$mail.Attachments.Add(${JSON.stringify(p)})`).join('\n')}
       $mail.Display()
-      Start-Sleep -Milliseconds 300
+
+      # 等待并尝试前置 Outlook 窗口
       $shell = New-Object -ComObject WScript.Shell
-      $shell.AppActivate("Outlook")
+      $maxTries = 10
+      $activated = $false
+      for ($i = 0; $i -lt $maxTries; $i++) {
+        Start-Sleep -Milliseconds 500
+        $activated = $shell.AppActivate("Outlook")
+        if ($activated) { break }
+      }
     `.trim()
 
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
