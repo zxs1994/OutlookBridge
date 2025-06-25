@@ -101,34 +101,45 @@ function handleProtocol(urlStr) {
  */
 function createOutlookMailWindows({ to, subject, body, attachments }) {
   try {
+    const tempDir = path.join(os.tmpdir(), 'outlookbridge_attachments')
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
+
+    const downloadStatements = attachments.map((url, i) => {
+      const filename = `file_${i}_${Date.now()}.${url.split('.').pop().split('?')[0] || 'tmp'}`
+      const fullPath = path.join(tempDir, filename).replace(/\\/g, '\\\\')
+      return `
+        $wc = New-Object System.Net.WebClient
+        $wc.DownloadFile("${url}", "${fullPath}")
+        $mail.Attachments.Add("${fullPath}")
+      `
+    }).join('\n')
+
     const psScript = `
       $outlook = New-Object -ComObject Outlook.Application
       $mail = $outlook.CreateItem(0)
       $mail.To = ${JSON.stringify(to)}
       $mail.Subject = ${JSON.stringify(subject)}
       $mail.HTMLBody = ${JSON.stringify(body)}
-      ${attachments.map(p => `$mail.Attachments.Add(${JSON.stringify(p)})`).join('\n')}
+
+      ${downloadStatements}
+
       $mail.Display()
 
-      # 等待并尝试前置 Outlook 窗口
+      # 激活 Outlook 窗口
       $shell = New-Object -ComObject WScript.Shell
-      $maxTries = 10
-      $activated = $false
-      for ($i = 0; $i -lt $maxTries; $i++) {
+      for ($i = 0; $i -lt 10; $i++) {
         Start-Sleep -Milliseconds 500
-        $activated = $shell.AppActivate("Outlook")
-        if ($activated) { break }
+        if ($shell.AppActivate("Outlook")) { break }
       }
     `.trim()
 
     const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
-
     execSync(`powershell -WindowStyle Hidden -NoProfile -EncodedCommand ${encoded}`, {
       stdio: 'ignore',
       windowsHide: true,
     })
 
-    console.log('✅ 成功调用 Windows Outlook 并激活窗口')
+    console.log('✅ 成功调用 Windows Outlook，附件为 URL 下载')
   } catch (err) {
     console.error('❌ 调用 Outlook 出错:', err)
   }
@@ -142,11 +153,21 @@ function createOutlookMailMac({ to, subject, body, attachments }) {
     const escapeAppleScriptString = str =>
       str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
+    const tempDir = path.join(os.tmpdir(), 'outlookbridge_attachments')
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
+
+    const localPaths = attachments.map((url, i) => {
+      const filename = `file_${i}_${Date.now()}.${url.split('.').pop().split('?')[0] || 'tmp'}`
+      const filePath = path.join(tempDir, filename)
+      execSync(`curl -sSL "${url}" -o "${filePath}"`)
+      return filePath
+    })
+
     const asScript = `
       tell application "Microsoft Outlook"
         set newMessage to make new outgoing message with properties {subject:"${escapeAppleScriptString(subject)}", content:"${escapeAppleScriptString(body)}"}
         make new recipient at newMessage with properties {email address:{name:"", address:"${escapeAppleScriptString(to)}"}}
-        ${attachments.map(filePath =>
+        ${localPaths.map(filePath =>
           `make new attachment at newMessage with properties {file:(POSIX file "${escapeAppleScriptString(filePath)}")}`
         ).join('\n')}
         open newMessage
@@ -156,7 +177,7 @@ function createOutlookMailMac({ to, subject, body, attachments }) {
     const tmpFile = path.join(os.tmpdir(), 'outlook_temp.scpt')
     fs.writeFileSync(tmpFile, asScript)
     execSync(`osascript "${tmpFile}"`, { stdio: 'ignore' })
-    console.log('✅ 成功调用 macOS Outlook')
+    console.log('✅ 成功调用 macOS Outlook，附件为 URL 下载')
   } catch (err) {
     console.error('❌ macOS 调用 Outlook 失败:', err)
   }
