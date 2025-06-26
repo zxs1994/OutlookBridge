@@ -32,6 +32,9 @@
     ],
     "files": [
       "main.js",
+      "mac.js",
+      "win.js",
+      "messageBox.js",
       "package.json"
     ],
     "directories": {
