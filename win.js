@@ -3,39 +3,16 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const showMessageBox = require('./messageBox')
+const { Notification } = require('electron')
 
 // ✅ 弹出非阻塞提示框（并返回 PID 方便关闭）
 function showDownloadPopup(title = 'Outlook Bridge') {
-	const psScript = `
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.Application]::EnableVisualStyles()
-$form = New-Object System.Windows.Forms.Form
-$form.Text = '${title}'
-$form.Width = 300
-$form.Height = 100
-$form.StartPosition = 'CenterScreen'
-$form.TopMost = $true
-
-$label = New-Object System.Windows.Forms.Label
-$label.Text = '正在下载附件，请稍候...'
-$label.Dock = 'Fill'
-$label.TextAlign = 'MiddleCenter'
-$form.Controls.Add($label)
-
-$form.ShowDialog()
-`
-
-	const tmpPath = path.join(os.tmpdir(), 'popup.ps1')
-	fs.writeFileSync(tmpPath, psScript, 'utf8')
-
-	return spawn(
-		'powershell',
-		['-NoProfile', '-WindowStyle', 'Normal', '-File', tmpPath],
-		{
-			detached: true,
-			stdio: 'ignore',
-		}
-	)
+  const notification = new Notification({
+    title,
+    body: '正在下载附件…',
+  })
+  notification.show()
+  return null
 }
 
 /**
@@ -147,7 +124,9 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 				}
 			)
 
-			if (popup) popup.kill()
+			if (popup?.pid) {
+				process.kill(-popup.pid)
+			}
 			return
 		}
 
@@ -182,7 +161,9 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 		execSync(cmd)
 	} catch (err) {
 		try {
-			if (popup) popup.kill()
+			if (popup?.pid) {
+				process.kill(-popup.pid)
+			}
 		} catch {}
 		showMessageBox(`调用 Outlook 出错：${err.message}`)
 		console.error('❌ 调用 Outlook 出错:', err)
