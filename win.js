@@ -1,18 +1,44 @@
 const { execSync, spawn } = require('child_process')
+const { BrowserWindow } = require('electron') // 替换 Notification 引入
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const showMessageBox = require('./messageBox')
-const { Notification } = require('electron')
 
-// ✅ 弹出非阻塞提示框（并返回 PID 方便关闭）
+let downloadWin = null
+
+// ✅ 弹出非阻塞提示框（并返回窗口实例方便关闭）
 function showDownloadPopup(title = 'Outlook Bridge') {
-  const notification = new Notification({
-    title,
-    body: '正在下载附件…',
+  if (downloadWin) return null
+
+  downloadWin = new BrowserWindow({
+    width: 300,
+    height: 100,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    modal: true,
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
   })
-  notification.show()
-  return null
+
+  downloadWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
+    <!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><style>
+      body { margin:0; display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; font-size:14px; }
+    </style></head><body>正在下载附件，请稍候...</body></html>
+  `))
+
+  downloadWin.once('ready-to-show', () => downloadWin.show())
+
+  downloadWin.on('closed', () => {
+    downloadWin = null
+  })
+
+  return downloadWin
 }
 
 /**
@@ -124,8 +150,8 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 				}
 			)
 
-			if (popup?.pid) {
-				process.kill(-popup.pid)
+			if (popup) {
+				popup.close()
 			}
 			return
 		}
@@ -145,7 +171,9 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 					'\\\\'
 				)}')"`
 			)
-			if (popup) popup.kill()
+			if (popup) {
+				popup.close()
+			}
 		}
 
 		// ✅ 构建 mailto 链接
@@ -161,8 +189,8 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 		execSync(cmd)
 	} catch (err) {
 		try {
-			if (popup?.pid) {
-				process.kill(-popup.pid)
+			if (popup) {
+				popup.close()
 			}
 		} catch {}
 		showMessageBox(`调用 Outlook 出错：${err.message}`)
