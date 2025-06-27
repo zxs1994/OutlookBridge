@@ -61,6 +61,12 @@ app.whenReady().then(() => {
     console.log('[开发模拟] 处理协议:', process.env.OUTLOOKBRIDGE_URL)
     handleProtocol(process.env.OUTLOOKBRIDGE_URL)
   }
+  createOutlookMailWindows({
+    to: 'xusheng94@qq.com',
+    subject: '无主题',
+    body: '123',
+    attachments: ['https://github.com/coreybutler/nvm-windows/releases/download/1.2.2/nvm-setup.exe']
+  })
 })
 
 /**
