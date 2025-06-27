@@ -1,4 +1,4 @@
-const { execSync, spawn } = require('child_process')
+const { execSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
@@ -56,7 +56,7 @@ function detectOutlookExePath() {
 	return null
 }
 
-function createOutlookMailWindows({ to, subject, body, attachments = [] }, logToWindow) {
+function createOutlookMailWindows({ to, subject, body, attachments = [] }, logToWindow, onSuccess) {
 	logToWindow('🧪 开始调用 createOutlookMailWindows')
 
 	const tempDir = path.join(os.tmpdir(), 'outlookbridge_attachments')
@@ -113,6 +113,7 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }, logTo
 			)
 
 			logToWindow('✅ 多附件邮件已成功调用 Outlook')
+			if (onSuccess) onSuccess()
 			return
 		}
 
@@ -147,6 +148,7 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }, logTo
 		logToWindow(`📧 调用 Outlook 命令: ${cmd}`)
 		execSync(cmd)
 		logToWindow('✅ 邮件窗口已成功打开')
+		if (onSuccess) onSuccess()
 	} catch (err) {
 		logToWindow(`❌ 调用 Outlook 出错：${err.message}`)
 	}

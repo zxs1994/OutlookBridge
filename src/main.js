@@ -58,7 +58,7 @@ if (!isDev) {
 if (isMac) {
   app.on('open-url', (event, urlStr) => {
     event.preventDefault()
-    handleProtocol(urlStr)
+    firstProtocolArg = urlStr // 延迟处理
   })
 }
 
@@ -115,7 +115,10 @@ function handleProtocol(urlStr) {
       attachments: params.attachments?.trim()
         ? params.attachments.split(',').map(s => s.trim())
         : []
-    }, logToWindow)
+    }, logToWindow, () => {
+      logToWindow('✅ 邮件窗口打开成功，3 秒后自动退出')
+      setTimeout(() => app.quit(), 3000)
+    })
   } catch (err) {
     logToWindow(`❌ 协议处理失败: ${err.message}`)
   }

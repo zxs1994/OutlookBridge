@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-function createOutlookMailMac({ to, subject, body, attachments }, logToWindow) {
+function createOutlookMailMac({ to, subject, body, attachments }, logToWindow, onSuccess) {
   try {
     attachments = Array.isArray(attachments) ? attachments : []
 
@@ -40,6 +40,7 @@ function createOutlookMailMac({ to, subject, body, attachments }, logToWindow) {
     const result = execSync(`osascript "${tmpFile}"`, { encoding: 'utf8' }).trim()
 
     logToWindow(`✅ macOS Outlook 调用成功，返回: ${result}`)
+    if (onSuccess) onSuccess()
   } catch (err) {
     logToWindow(`❌ macOS 调用 Outlook 失败: ${err.message}`)
   }
