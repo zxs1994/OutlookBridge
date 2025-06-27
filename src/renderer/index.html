@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Outlook Bridge</title>
+    <style>
+      body { margin: 0; padding: 10px; font-family: sans-serif; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <pre id="log"></pre>
+    <script>
+      const { ipcRenderer } = require('electron')
+      ipcRenderer.on('log', (e, msg) => {
+        const el = document.getElementById('log')
+        el.innerText += msg + '\n'
+        el.scrollTop = el.scrollHeight
+      })
+    </script>
+  </body>
+</html>

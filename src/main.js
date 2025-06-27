@@ -2,7 +2,6 @@ const { app, BrowserWindow } = require('electron')
 const path = require('path')
 const createOutlookMailMac = require('./mac')
 const createOutlookMailWindows = require('./win')
-const { pathToFileURL } = require('url')
 
 const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
@@ -12,25 +11,20 @@ let mainWindow = null
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    show: true,
     width: 600,
     height: 400,
     webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false, // 推荐关闭，防止注入
-      // preload: path.join(__dirname, 'preload.js') // 可选
+      nodeIntegration: true,
+      contextIsolation: false,
     }
   })
 
-  const htmlPath = path.join(__dirname, 'index.html')
-  mainWindow.loadURL(pathToFileURL(htmlPath).href)
+  mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'))
 }
 
 function logToWindow(message) {
   if (mainWindow && mainWindow.webContents) {
-    mainWindow.webContents.executeJavaScript(
-      `document.getElementById('log').innerText += ${JSON.stringify(message + '\n')}`
-    )
+    mainWindow.webContents.send('log', message)
   }
   console.log(message)
 }
