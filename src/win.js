@@ -1,45 +1,7 @@
 const { execSync, spawn } = require('child_process')
-const { BrowserWindow } = require('electron') // 替换 Notification 引入
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const showMessageBox = require('./messageBox')
-
-let downloadWin = null
-
-// ✅ 弹出非阻塞提示框（并返回窗口实例方便关闭）
-function showDownloadPopup(title = 'Outlook Bridge') {
-  if (downloadWin) return null
-
-  downloadWin = new BrowserWindow({
-    width: 300,
-    height: 100,
-    frame: false,
-    alwaysOnTop: true,
-    resizable: false,
-    modal: true,
-    show: false,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  })
-
-  downloadWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
-    <!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><style>
-      body { margin:0; display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; font-size:14px; }
-    </style></head><body>正在下载附件，请稍候...</body></html>
-  `))
-
-  downloadWin.once('ready-to-show', () => downloadWin.show())
-
-  downloadWin.on('closed', () => {
-    downloadWin = null
-  })
-
-  return downloadWin
-}
 
 /**
  * 检测 Outlook 安装路径
@@ -94,20 +56,20 @@ function detectOutlookExePath() {
 	return null
 }
 
-function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
-	console.log('🧪 正在调用 createOutlookMailWindows')
+function createOutlookMailWindows({ to, subject, body, attachments = [] }, logToWindow) {
+	logToWindow('🧪 开始调用 createOutlookMailWindows')
 
 	const tempDir = path.join(os.tmpdir(), 'outlookbridge_attachments')
 	if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
 
-	let popup = null
-
 	try {
 		const outlookPath = detectOutlookExePath()
 		if (!outlookPath) throw new Error('未找到 Outlook 安装路径')
+		logToWindow(`🔍 找到 Outlook 路径: ${outlookPath}`)
+
 		// ✅ 多附件走 COM 方式
 		if (attachments.length > 1) {
-			popup = showDownloadPopup()
+			logToWindow(`📎 多附件模式，共 ${attachments.length} 个附件，准备下载并添加`)
 
 			const downloadStatements = attachments
 				.map((url, i) => {
@@ -150,16 +112,14 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 				}
 			)
 
-			if (popup) {
-				popup.close()
-			}
+			logToWindow('✅ 多附件邮件已成功调用 Outlook')
 			return
 		}
 
 		// ✅ 单附件或无附件，使用 outlook.exe 启动
 		let downloadedFilePath = null
 		if (attachments.length === 1) {
-			popup = showDownloadPopup()
+			logToWindow('📎 单附件模式，准备下载附件')
 
 			const url = attachments[0]
 			const ext = url.split('.').pop().split('?')[0] || 'tmp'
@@ -171,9 +131,7 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 					'\\\\'
 				)}')"`
 			)
-			if (popup) {
-				popup.close()
-			}
+			logToWindow(`✅ 附件下载完成，路径: ${downloadedFilePath}`)
 		}
 
 		// ✅ 构建 mailto 链接
@@ -186,15 +144,11 @@ function createOutlookMailWindows({ to, subject, body, attachments = [] }) {
 			? `"${outlookPath}" /a "${downloadedFilePath}" /m "${to}?${mailtoParams}"`
 			: `"${outlookPath}" /c ipm.note /m "mailto:${to}?${mailtoParams}"`
 
+		logToWindow(`📧 调用 Outlook 命令: ${cmd}`)
 		execSync(cmd)
+		logToWindow('✅ 邮件窗口已成功打开')
 	} catch (err) {
-		try {
-			if (popup) {
-				popup.close()
-			}
-		} catch {}
-		showMessageBox(`调用 Outlook 出错：${err.message}`)
-		console.error('❌ 调用 Outlook 出错:', err)
+		logToWindow(`❌ 调用 Outlook 出错：${err.message}`)
 	}
 }
 

@@ -2,7 +2,7 @@ const { app, BrowserWindow } = require('electron')
 const path = require('path')
 const createOutlookMailMac = require('./mac')
 const createOutlookMailWindows = require('./win')
-const showMessageBox = require('./messageBox')
+const { pathToFileURL } = require('url')
 
 const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
@@ -12,16 +12,31 @@ let mainWindow = null
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    show: false, // 不显示窗口
+    show: true,
+    width: 600,
+    height: 400,
     webPreferences: {
       contextIsolation: true,
+      nodeIntegration: false, // 推荐关闭，防止注入
+      // preload: path.join(__dirname, 'preload.js') // 可选
     }
   })
-  mainWindow.loadURL('data:text/html,<html></html>') // 简单页面
+
+  const htmlPath = path.join(__dirname, 'index.html')
+  mainWindow.loadURL(pathToFileURL(htmlPath).href)
+}
+
+function logToWindow(message) {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.executeJavaScript(
+      `document.getElementById('log').innerText += ${JSON.stringify(message + '\n')}`
+    )
+  }
+  console.log(message)
 }
 
 // 🟡 日志打印启动参数
-console.log('启动参数:', process.argv)
+logToWindow('启动参数:' + JSON.stringify(process.argv))
 
 // ✅ 注册协议（仅生产）
 if (!isDev) {
@@ -34,7 +49,7 @@ if (!isDev) {
     )
   }
 } else {
-  console.log('[开发模式] 请使用 OUTLOOKBRIDGE_URL 环境变量模拟 outlookbridge:// 协议')
+  logToWindow('[开发模式] 请使用 OUTLOOKBRIDGE_URL 环境变量模拟 outlookbridge:// 协议')
 }
 
 // ✅ Mac 上 open-url 事件
@@ -51,7 +66,7 @@ if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', (event, commandLine) => {
-    console.log('[second-instance] 参数:', commandLine)
+    logToWindow('[second-instance] 参数:' + JSON.stringify(commandLine))
     const protocolArg = commandLine.find(arg => arg.startsWith('outlookbridge://'))
     if (protocolArg) handleProtocol(protocolArg)
   })
@@ -64,20 +79,19 @@ app.whenReady().then(() => {
 
   // ✅ 如果通过协议启动，等待 second-instance 处理，不在主进程重复调用
   if (protocolArg && !isDev) {
-    console.log('[首次启动] 收到协议参数，等待 second-instance 处理')
+    logToWindow('[首次启动] 收到协议参数，等待 second-instance 处理')
     return
   }
 
-  if (isDev && process.env.OUTLOOKBRIDGE_URL?.startsWith('outlookbridge://')) {
-    console.log('[开发模拟] 处理协议:', process.env.OUTLOOKBRIDGE_URL)
-    handleProtocol(process.env.OUTLOOKBRIDGE_URL)
+  if (isDev) {
+    const fn = isMac ? createOutlookMailMac : isWin ? createOutlookMailWindows : null
+    fn({
+      to: 'xusheng94@qq.com',
+      subject: '无主题',
+      body: '123',
+      // attachments: ['https://pic.netbian.com/uploads/allimg/250121/231514-173747251455f8.jpg']
+    }, logToWindow)
   }
-  createOutlookMailWindows({
-    to: 'xusheng94@qq.com',
-    subject: '无主题',
-    body: '123',
-    attachments: ['https://pic.netbian.com/uploads/allimg/250121/231514-173747251455f8.jpg']
-  })
 })
 
 /**
@@ -87,20 +101,20 @@ app.whenReady().then(() => {
 function handleProtocol(urlStr) {
   try {
     const rawUrl = decodeURIComponent(urlStr)
-    console.log('[协议处理] URL:', rawUrl)
+    logToWindow('[协议处理] URL:' + rawUrl)
     const url = new URL(rawUrl)
     const params = Object.fromEntries(url.searchParams.entries())
 
     if (!params.email) {
       // 如果没有 email 参数，弹出提示框
-      showMessageBox('❌ 缺少 email 参数', '错误')
+      logToWindow('❌ 缺少 email 参数')
       return
     }
 
     const fn = isMac ? createOutlookMailMac : isWin ? createOutlookMailWindows : null
     if (!fn) {
       // 如果不是 Mac 或 Windows，提示不支持
-      showMessageBox('❌ 当前系统不支持发送 Outlook 邮件', '错误')
+      logToWindow('❌ 当前系统不支持发送 Outlook 邮件')
       return
     }
 
@@ -111,15 +125,15 @@ function handleProtocol(urlStr) {
       attachments: params.attachments?.trim()
         ? params.attachments.split(',').map(s => s.trim())
         : []
-    })
+    }, logToWindow)
   } catch (err) {
     // 捕获协议处理中的错误
-    showMessageBox(`❌ 协议处理失败: ${err.message}`, '错误')
+    logToWindow(`❌ 协议处理失败: ${err.message}`)
   }
 }
 
 
 // 捕获未处理异常
 process.on('uncaughtException', (err) => {
-  console.error('💥 未捕获异常:', err)
+  logToWindow('💥 未捕获异常:' + err)
 })

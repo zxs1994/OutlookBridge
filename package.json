@@ -1,7 +1,7 @@
 {
   "name": "outlookbridge",
   "version": "1.0.2",
-  "main": "main.js",
+  "main": "src/main.js",
   "license": "MIT",
   "description": "A protocol bridge to launch Outlook with attachments",
   "author": "xusheng",
@@ -31,10 +31,7 @@
       }
     ],
     "files": [
-      "main.js",
-      "mac.js",
-      "win.js",
-      "messageBox.js",
+      "src",
       "package.json"
     ],
     "directories": {

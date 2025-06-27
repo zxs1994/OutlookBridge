@@ -1,19 +1,19 @@
 const { execSync } = require('child_process')
 const fs = require('fs')
-const os = require('os')
 const path = require('path')
+const os = require('os')
 
-/**
- * macOS 使用 AppleScript 调用 Outlook 创建邮件
- */
-function createOutlookMailMac({ to, subject, body, attachments }) {
+function createOutlookMailMac({ to, subject, body, attachments }, logToWindow) {
   try {
+    attachments = Array.isArray(attachments) ? attachments : []
+
     const escapeAppleScriptString = str =>
       str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
     const tempDir = path.join(os.tmpdir(), 'outlookbridge_attachments')
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
 
+    // 下载附件
     const localPaths = attachments.map((url, i) => {
       const filename = `file_${i}_${Date.now()}.${url.split('.').pop().split('?')[0] || 'tmp'}`
       const filePath = path.join(tempDir, filename)
@@ -30,14 +30,18 @@ function createOutlookMailMac({ to, subject, body, attachments }) {
         ).join('\n')}
         open newMessage
         activate
+        return "success"
       end tell
     `
+
     const tmpFile = path.join(os.tmpdir(), 'outlook_temp.scpt')
     fs.writeFileSync(tmpFile, asScript)
-    execSync(`osascript "${tmpFile}"`, { stdio: 'ignore' })
-    console.log('✅ 成功调用 macOS Outlook，附件为 URL 下载')
+
+    const result = execSync(`osascript "${tmpFile}"`, { encoding: 'utf8' }).trim()
+
+    logToWindow(`✅ macOS Outlook 调用成功，返回: ${result}`)
   } catch (err) {
-    console.error('❌ macOS 调用 Outlook 失败:', err)
+    logToWindow(`❌ macOS 调用 Outlook 失败: ${err.message}`)
   }
 }
 
