@@ -1,4 +1,4 @@
-const { app } = require('electron')
+const { app, BrowserWindow } = require('electron')
 const path = require('path')
 const createOutlookMailMac = require('./mac')
 const createOutlookMailWindows = require('./win')
@@ -8,7 +8,17 @@ const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
 const isDev = !app.isPackaged
 
-// require('./test')
+let mainWindow = null
+
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    show: false, // 不显示窗口
+    webPreferences: {
+      contextIsolation: true,
+    }
+  })
+  mainWindow.loadURL('data:text/html,<html></html>') // 简单页面
+}
 
 // 🟡 日志打印启动参数
 console.log('启动参数:', process.argv)
@@ -49,6 +59,7 @@ if (!gotLock) {
 
 // ✅ App 准备好后处理首次启动的参数
 app.whenReady().then(() => {
+  createMainWindow()
   const protocolArg = process.argv.find(arg => arg.startsWith('outlookbridge://'))
 
   // ✅ 如果通过协议启动，等待 second-instance 处理，不在主进程重复调用
@@ -65,7 +76,7 @@ app.whenReady().then(() => {
     to: 'xusheng94@qq.com',
     subject: '无主题',
     body: '123',
-    attachments: ['https://github.com/coreybutler/nvm-windows/releases/download/1.2.2/nvm-setup.exe']
+    attachments: ['https://pic.netbian.com/uploads/allimg/250121/231514-173747251455f8.jpg']
   })
 })
 
