@@ -2,6 +2,7 @@ const { app, BrowserWindow } = require('electron')
 const path = require('path')
 const createOutlookMailMac = require('./mac')
 const createOutlookMailWindows = require('./win')
+require('dotenv').config()
 
 const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
@@ -83,8 +84,9 @@ if (!gotLock) {
     }
 
     createMainWindow()
-
+    console.log(process.env.OUTLOOKBRIDGE_URL)
     if (isDev && process.env.OUTLOOKBRIDGE_URL?.startsWith('outlookbridge://')) {
+      console.log(process.env.OUTLOOKBRIDGE_URL)
       handleProtocol(process.env.OUTLOOKBRIDGE_URL)
     }
   })
