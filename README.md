@@ -34,6 +34,8 @@ OUTLOOKBRIDGE_URL=outlookbridge://?email=test@example.com&subject=%E6%B5%8B%E8%A
 
 ## 🛠️ 构建打包
 
+> 🖥️ 本程序支持打包生成 macOS 和 Windows 平台的客户端，可独立运行并注册 `outlookbridge://` 协议。
+
 根据当前操作系统选择打包命令：
 
 - **macOS 构建**：
