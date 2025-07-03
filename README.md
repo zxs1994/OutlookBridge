@@ -67,6 +67,8 @@ outlookbridge://?email=xxx@example.com&subject=测试&body=你好&attachments=ht
 
 ## 💡 注意事项
 
+- windows 32位系统未测试
+- windows环境下你的Outlook版本需要支持 COM 接口调用, 可以双击用test文件夹下的test.vbs测试是否支持
 - 在开发模式下，会从 `.env` 中读取 `OUTLOOKBRIDGE_URL` 自动进行模拟调用；
 - 渲染进程通过 `window.electronAPI` 接收参数，可在页面中 `logToWindow()` 输出内容；
 - 所有 URL 参数必须经过 `encodeURIComponent` 编码。
