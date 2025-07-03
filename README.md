@@ -75,4 +75,5 @@ outlookbridge://?email=xxx@example.com&subject=测试&body=你好&attachments=ht
 
 ---
 
-如需添加截图、示例协议或扩展功能，请联系维护者更新。
+如有bug，请联系维护者更新。
+xusheng94@qq.com
